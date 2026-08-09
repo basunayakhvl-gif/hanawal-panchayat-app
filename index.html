@@ -1,14 +1,679 @@
-<!doctype html><html lang="kn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ಗ್ರಾಮ ಪಂಚಾಯತ್ ಹಣವಾಳ</title><style>body{font-family:Arial,sans-serif;margin:0;background:#f5f7fa;color:#172033}header{background:#075b3b;color:white;padding:18px}.wrap{max-width:1050px;margin:auto;padding:16px}.logo{width:70px;height:70px;object-fit:cover;border-radius:10px;vertical-align:middle;margin-right:12px}.btn{background:#075b3b;color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}input,select{padding:10px;border:1px solid #ccd3dd;border-radius:7px;width:100%;box-sizing:border-box;margin:5px 0 12px}.panel{background:white;padding:18px;border-radius:12px;margin:15px 0;box-shadow:0 2px 10px #0001}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #ddd;text-align:left}.hidden{display:none}.error{color:#b42318}</style></head><body><header><div class="wrap"><img class="logo" src="hanawal_panchayat.jpg"><b>ಗ್ರಾಮ ಪಂಚಾಯತ್ ಹಣವಾಳ</b><div>ತಾಲೂಕು: ಗಂಗಾವತಿ • ಜಿಲ್ಲೆ: ಕೊಪ್ಪಳ • 📞 8073801416</div></div></header><main class="wrap"><button class="btn" onclick="pub()">Public Documents</button> <button class="btn" onclick="adm()">Admin</button><section id="public"><div class="panel"><h2>ಸಾರ್ವಜನಿಕ ದಾಖಲೆಗಳು</h2><div class="grid"><input id="q" placeholder="Motion No. / ವಿಷಯ"><input id="date" type="date"><select id="status"><option value="">ಎಲ್ಲಾ Status</option><option>Approved</option><option>Pending</option><option>Rejected</option></select></div><div id="list">Loading...</div></div></section><section id="admin" class="hidden"><div id="login" class="panel"><h2>Admin Login</h2><input id="password" type="password" placeholder="Admin password"><button class="btn" onclick="login()">Login</button><p id="err" class="error"></p></div><div id="dashboard" class="panel hidden"><h2>PDF / Scan Upload</h2><form id="form"><input name="no" placeholder="Motion No." required><input name="date" type="date" required><input name="subject" placeholder="ವಿಷಯ" required><select name="status"><option>Approved</option><option>Pending</option><option>Rejected</option></select><input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required><button class="btn">Upload</button></form><p id="upmsg"></p><div id="adminList"></div></div></section></main><script>
-let token=sessionStorage.getItem("hanawalToken")||"";
-async function api(fn,opt={}){opt.headers=opt.headers||{};if(token)opt.headers.Authorization="Bearer "+token;let r=await fetch("/.netlify/functions/"+fn,opt);let t=await r.text();let d;try{d=JSON.parse(t)}catch(e){throw Error("Netlify Function response error: "+r.status)}if(!r.ok)throw Error(d.error||"Request failed");return d}
-function pub(){document.getElementById("public").classList.remove("hidden");document.getElementById("admin").classList.add("hidden");load()}
-function adm(){document.getElementById("public").classList.add("hidden");document.getElementById("admin").classList.remove("hidden")}
-async function login(){try{let d=await api("login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:password.value})});token=d.token;sessionStorage.setItem("hanawalToken",token);loginBox()}catch(e){err.textContent=e.message}}
-function loginBox(){document.getElementById("login").classList.add("hidden");document.getElementById("dashboard").classList.remove("hidden");adminLoad()}
-form.onsubmit=async e=>{e.preventDefault();try{await api("upload",{method:"POST",body:new FormData(form)});upmsg.textContent="Upload ಯಶಸ್ವಿಯಾಗಿದೆ";form.reset();load();adminLoad()}catch(x){upmsg.textContent=x.message}}
-async function load(){try{let a=(await api("documents")).documents;let q=document.getElementById("q").value.toLowerCase(),dt=document.getElementById("date").value,st=document.getElementById("status").value;a=a.filter(x=>(x.no+" "+x.subject).toLowerCase().includes(q)&&(!dt||x.date===dt)&&(!st||x.status===st));list.innerHTML="<table><tr><th>Motion</th><th>ದಿನಾಂಕ</th><th>ವಿಷಯ</th><th>Status</th><th>Document</th></tr>"+a.map(x=>`<tr><td>${esc(x.no)}</td><td>${esc(x.date)}</td><td>${esc(x.subject)}</td><td>${esc(x.status)}</td><td><a href="${x.shareUrl}" target="_blank">View</a></td></tr>`).join("")+"</table>"}catch(e){list.textContent=e.message}}
-async function adminLoad(){try{let a=(await api("documents?admin=1")).documents;adminList.innerHTML=a.map(x=>`<p><b>${esc(x.no)}</b> ${esc(x.subject)} — <a href="${x.shareUrl}" target="_blank">View</a> <button onclick="del('${x.id}')">Delete</button></p>`).join("")}catch(e){adminList.textContent=e.message}}
-async function del(id){if(confirm("Delete?")){await api("delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})});load();adminLoad()}}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-q.oninput=load;date.onchange=load;status.onchange=load;load();
-</script></body></html>
+```html
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hanawal Gram Panchayat</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    header {
+      background: #1769aa;
+      color: white;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 15px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 7px 0;
+      box-sizing: border-box;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background: #1769aa;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: .9;
+    }
+
+    .danger {
+      background: #c62828;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .menu {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .menu button {
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    .error {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #2e7d32;
+      font-weight: bold;
+    }
+
+    a {
+      color: #1769aa;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>ಹನಾವಳ ಗ್ರಾಮ ಪಂಚಾಯತ್</h1>
+  <p>Online Panchayat Administration</p>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <section id="login" class="card">
+    <h2>Admin Login</h2>
+
+    <label>Username</label>
+    <input id="username" type="text" placeholder="Username" autocomplete="username">
+
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+
+    <button onclick="login()">Login</button>
+
+    <p id="err" class="error"></p>
+  </section>
+
+
+  <!-- ADMIN DASHBOARD -->
+  <section id="dashboard" class="hidden">
+
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+
+      <div class="menu">
+        <button onclick="showSection('documentsSection')">
+          Documents
+        </button>
+
+        <button onclick="showSection('mutationSection')">
+          Mutation
+        </button>
+
+        <button onclick="showSection('uploadSection')">
+          Upload Document
+        </button>
+
+        <button onclick="showSection('manageSection'); adminLoad()">
+          Manage Documents
+        </button>
+
+        <button class="danger" onclick="logout()">
+          Logout
+        </button>
+      </div>
+    </div>
+
+
+    <!-- DOCUMENTS -->
+    <section id="documentsSection" class="card">
+
+      <h2>Documents</h2>
+
+      <input id="q" type="text" placeholder="Search document..." oninput="load()">
+
+      <input id="date" type="date" onchange="load()">
+
+      <select id="status" onchange="load()">
+        <option value="">All Status</option>
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+
+      <div id="list">
+        Loading...
+      </div>
+
+    </section>
+
+
+    <!-- MUTATION -->
+    <section id="mutationSection" class="card hidden">
+
+      <h2>Mutation</h2>
+
+      <p>
+        Mutation application/upload page
+      </p>
+
+      <a href="Mutation.html">
+        <button type="button">Open Mutation App</button>
+      </a>
+
+    </section>
+
+
+    <!-- UPLOAD -->
+    <section id="uploadSection" class="card hidden">
+
+      <h2>Upload Document</h2>
+
+      <form id="uploadForm">
+
+        <label>Document Number</label>
+        <input name="no" type="text" required>
+
+        <label>Date</label>
+        <input name="date" type="date" required>
+
+        <label>Subject</label>
+        <input name="subject" type="text" required>
+
+        <label>Status</label>
+        <select name="status">
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+
+        <label>Select Document</label>
+        <input name="file" type="file" required>
+
+        <button type="submit">
+          Upload Document
+        </button>
+
+      </form>
+
+      <p id="upmsg"></p>
+
+    </section>
+
+
+    <!-- MANAGE DOCUMENTS -->
+    <section id="manageSection" class="card hidden">
+
+      <h2>Manage Documents</h2>
+
+      <div id="adminList">
+        Loading...
+      </div>
+
+    </section>
+
+  </section>
+
+</div>
+
+
+<script>
+
+let token = sessionStorage.getItem("hanawalToken") || "";
+
+
+/* API */
+async function api(fn, opt = {}) {
+
+  opt.headers = opt.headers || {};
+
+  if (token) {
+    opt.headers.Authorization = "Bearer " + token;
+  }
+
+  const response =
+    await fetch("/.netlify/functions/" + fn, opt);
+
+  const text = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error(
+      "Netlify Function response error: " +
+      response.status
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || "Request failed"
+    );
+  }
+
+  return data;
+}
+
+
+/* LOGIN */
+async function login() {
+
+  const user =
+    document.getElementById("username").value.trim();
+
+  const pass =
+    document.getElementById("password").value;
+
+  const err =
+    document.getElementById("err");
+
+  err.textContent = "";
+
+  if (!user || !pass) {
+    err.textContent =
+      "Username ಮತ್ತು Password ನಮೂದಿಸಿ";
+    return;
+  }
+
+  try {
+
+    const data = await api("login", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        username: user,
+        password: pass
+      })
+    });
+
+    token = data.token;
+
+    sessionStorage.setItem(
+      "hanawalToken",
+      token
+    );
+
+    loginBox();
+
+  } catch (e) {
+
+    err.textContent = e.message;
+  }
+}
+
+
+/* SHOW DASHBOARD */
+function loginBox() {
+
+  document
+    .getElementById("login")
+    .classList.add("hidden");
+
+  document
+    .getElementById("dashboard")
+    .classList.remove("hidden");
+
+  load();
+}
+
+
+/* SECTION NAVIGATION */
+function showSection(id) {
+
+  const sections = [
+    "documentsSection",
+    "mutationSection",
+    "uploadSection",
+    "manageSection"
+  ];
+
+  sections.forEach(section => {
+
+    document
+      .getElementById(section)
+      .classList.add("hidden");
+
+  });
+
+  document
+    .getElementById(id)
+    .classList.remove("hidden");
+}
+
+
+/* UPLOAD */
+document
+  .getElementById("uploadForm")
+  .onsubmit = async function(e) {
+
+    e.preventDefault();
+
+    const msg =
+      document.getElementById("upmsg");
+
+    msg.className = "";
+    msg.textContent = "Uploading...";
+
+    try {
+
+      await api("upload", {
+        method: "POST",
+        body: new FormData(this)
+      });
+
+      msg.className = "success";
+      msg.textContent =
+        "Upload ಯಶಸ್ವಿಯಾಗಿದೆ";
+
+      this.reset();
+
+      load();
+      adminLoad();
+
+    } catch (e) {
+
+      msg.className = "error";
+      msg.textContent = e.message;
+    }
+  };
+
+
+/* LOAD DOCUMENTS */
+async function load() {
+
+  const list =
+    document.getElementById("list");
+
+  try {
+
+    const data =
+      await api("documents");
+
+    let documents =
+      data.documents || [];
+
+    const search =
+      document
+        .getElementById("q")
+        .value
+        .toLowerCase();
+
+    const selectedDate =
+      document
+        .getElementById("date")
+        .value;
+
+    const selectedStatus =
+      document
+        .getElementById("status")
+        .value;
+
+    documents =
+      documents.filter(x => {
+
+        const text =
+          (x.no + " " + x.subject)
+          .toLowerCase();
+
+        return (
+          text.includes(search) &&
+          (!selectedDate ||
+            x.date === selectedDate) &&
+          (!selectedStatus ||
+            x.status === selectedStatus)
+        );
+
+      });
+
+
+    if (!documents.length) {
+
+      list.innerHTML =
+        "<p>No documents found.</p>";
+
+      return;
+    }
+
+
+    let html = `
+      <table>
+        <tr>
+          <th>No</th>
+          <th>Date</th>
+          <th>Subject</th>
+          <th>Status</th>
+          <th>Document</th>
+        </tr>
+    `;
+
+
+    documents.forEach(x => {
+
+      html += `
+        <tr>
+          <td>${esc(x.no)}</td>
+          <td>${esc(x.date)}</td>
+          <td>${esc(x.subject)}</td>
+          <td>${esc(x.status)}</td>
+          <td>
+            <a
+              href="${x.shareUrl}"
+              target="_blank">
+              View
+            </a>
+          </td>
+        </tr>
+      `;
+
+    });
+
+
+    html += "</table>";
+
+    list.innerHTML = html;
+
+  } catch (e) {
+
+    list.innerHTML =
+      `<p class="error">${esc(e.message)}</p>`;
+  }
+}
+
+
+/* ADMIN DOCUMENT MANAGEMENT */
+async function adminLoad() {
+
+  const adminList =
+    document.getElementById("adminList");
+
+  try {
+
+    const data =
+      await api("documents?admin=1");
+
+    const documents =
+      data.documents || [];
+
+    if (!documents.length) {
+
+      adminList.innerHTML =
+        "<p>No documents found.</p>";
+
+      return;
+    }
+
+
+    adminList.innerHTML =
+      documents.map(x => `
+
+        <div class="card">
+
+          <b>${esc(x.no)}</b>
+
+          <br>
+
+          ${esc(x.subject)}
+
+          <br>
+
+          <a
+            href="${x.shareUrl}"
+            target="_blank">
+            View
+          </a>
+
+          <button
+            class="danger"
+            onclick="del('${esc(x.id)}')">
+            Delete
+          </button>
+
+        </div>
+
+      `).join("");
+
+  } catch (e) {
+
+    adminList.innerHTML =
+      `<p class="error">${esc(e.message)}</p>`;
+  }
+}
+
+
+/* DELETE */
+async function del(id) {
+
+  if (!confirm("ಈ document ಅನ್ನು delete ಮಾಡಬೇಕೇ?")) {
+    return;
+  }
+
+  try {
+
+    await api("delete", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        id: id
+      })
+    });
+
+    alert("Document deleted");
+
+    load();
+    adminLoad();
+
+  } catch (e) {
+
+    alert(e.message);
+  }
+}
+
+
+/* LOGOUT */
+function logout() {
+
+  sessionStorage.removeItem(
+    "hanawalToken"
+  );
+
+  token = "";
+
+  document
+    .getElementById("dashboard")
+    .classList.add("hidden");
+
+  document
+    .getElementById("login")
+    .classList.remove("hidden");
+
+  document
+    .getElementById("username")
+    .value = "";
+
+  document
+    .getElementById("password")
+    .value = "";
+
+  showSection("documentsSection");
+}
+
+
+/* ESCAPE HTML */
+function esc(value) {
+
+  return String(value ?? "")
+    .replace(/[&<>"']/g, function(c) {
+
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[c];
+
+    });
+}
+
+
+/* EXISTING LOGIN SESSION */
+if (token) {
+
+  loginBox();
+
+}
+
+</script>
+
+</body>
+</html>
+```

@@ -1,1 +1,1 @@
-const {store,json,admin}=require('./_common');exports.handler=async e=>{try{if(e.queryStringParameters?.admin==='1'&&!admin(e))return json(401,{error:'Admin login required'});let a=await store().get('index',{type:'json'})||[];return json(200,{documents:a.map(x=>({...x,shareUrl:'/.netlify/functions/file?id='+encodeURIComponent(x.id)+'&key='+x.key}))})}catch(x){return json(500,{error:x.message})}};
+netlify/functions/documents.js

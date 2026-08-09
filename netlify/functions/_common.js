@@ -1,0 +1,1 @@
+const {getStore}=require('@netlify/blobs');function store(){return getStore('hanawal-documents')}function json(status,body){return {statusCode:status,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}}function admin(e){return (e.headers?.authorization||'')==='Bearer '+(process.env.ADMIN_TOKEN||'hanawal-demo-token')}module.exports={store,json,admin};
